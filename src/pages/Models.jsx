@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ThreeMfViewer from '../components/ThreeMfViewer.jsx'
+import { bundledModels } from '../data/gallery.js'
 
 const KEY_STORAGE = 'meowmeowsoft-upload-key'
 const DB_NAME = 'meowmeowsoft-models'
@@ -14,13 +15,6 @@ function extOf(name) {
 
 function isAllowed(name) {
   return ALLOWED.some((ext) => String(name || '').toLowerCase().endsWith(ext))
-}
-
-function prettySize(bytes) {
-  if (!bytes) return ''
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function openDb() {
@@ -55,19 +49,32 @@ async function idbPut(record) {
   })
 }
 
-async function idbDelete(name) {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const request = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(name)
-    request.onsuccess = () => resolve()
-    request.onerror = () => reject(request.error)
-  })
+function Mosaic({ items, activeId, onOpen }) {
+  if (!items.length) return <p className="hint">Nothing in this gallery yet.</p>
+  return (
+    <ul className="mosaic">
+      {items.map((item) => (
+        <li key={item.id}>
+          <button
+            type="button"
+            className={`mosaic-tile ${activeId === item.id ? 'active' : ''}`}
+            onClick={() => onOpen(item)}
+          >
+            <span className="mosaic-thumb">
+              {item.thumb ? <img src={item.thumb} alt="" /> : extOf(item.name)}
+            </span>
+            <span className="mosaic-name">{item.name}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 export default function Models() {
   const [published, setPublished] = useState([])
   const [localModels, setLocalModels] = useState([])
-  const [selected, setSelected] = useState('')
+  const [activeId, setActiveId] = useState('')
   const [localUrl, setLocalUrl] = useState('')
   const [localName, setLocalName] = useState('')
   const [uploadKey, setUploadKey] = useState('')
@@ -87,8 +94,7 @@ export default function Models() {
 
   const refreshLocal = useCallback(async () => {
     try {
-      const rows = await idbList()
-      setLocalModels(rows)
+      setLocalModels(await idbList())
     } catch {
       setLocalModels([])
     }
@@ -110,13 +116,43 @@ export default function Models() {
     loadPublished()
   }, [refreshLocal, loadPublished])
 
+  const gallery = useMemo(() => {
+    const bundled = bundledModels.map((model) => ({
+      id: `bundled:${model.name}`,
+      name: model.name,
+      thumb: model.thumb,
+      kind: 'bundled',
+    }))
+    const device = localModels.map((model) => ({
+      id: `device:${model.name}`,
+      name: model.name,
+      thumb: null,
+      kind: 'device',
+      blob: model.blob,
+    }))
+    const site = published.map((model) => ({
+      id: `site:${model.name}`,
+      name: model.name,
+      thumb: null,
+      kind: 'site',
+    }))
+    return [...bundled, ...device, ...site]
+  }, [localModels, published])
+
   const viewerSrc = useMemo(() => {
     if (localUrl) return localUrl
-    if (selected.startsWith('site:')) {
-      return `/api/models/${encodeURIComponent(selected.slice(5))}`
+    if (activeId.startsWith('site:')) {
+      return `/api/models/${encodeURIComponent(activeId.slice(5))}`
+    }
+    if (activeId.startsWith('bundled:')) {
+      const found = bundledModels.find((model) => model.name === activeId.slice(8))
+      return found?.href || ''
     }
     return ''
-  }, [localUrl, selected])
+  }, [localUrl, activeId])
+
+  const activeName = localName || activeId.replace(/^(site|bundled|device):/, '')
+  const activeExt = extOf(activeName)
 
   function rememberKey(value) {
     setUploadKey(value)
@@ -124,19 +160,31 @@ export default function Models() {
     else sessionStorage.removeItem(KEY_STORAGE)
   }
 
-  function showBlob(file) {
+  function showBlob(file, id) {
     if (localUrl) URL.revokeObjectURL(localUrl)
     const url = URL.createObjectURL(file)
     setLocalUrl(url)
     setLocalName(file.name)
-    setSelected('')
+    setActiveId(id || `device:${file.name}`)
+  }
+
+  function openItem(item) {
+    if (item.kind === 'device' && item.blob) {
+      showBlob(item.blob, item.id)
+      setStatus('')
+      return
+    }
+    if (localUrl) URL.revokeObjectURL(localUrl)
+    setLocalUrl('')
+    setLocalName(item.name)
+    setActiveId(item.id)
+    setStatus('')
   }
 
   async function onFiles(fileList) {
     const file = fileList?.[0]
     if (!file) return
-    const lower = file.name.toLowerCase()
-    if (!isAllowed(lower)) {
+    if (!isAllowed(file.name.toLowerCase())) {
       setStatus('Use a .glb, .gltf, .3mf, or .blend file.')
       return
     }
@@ -178,54 +226,48 @@ export default function Models() {
     }
   }
 
-  async function openLocal(record) {
-    showBlob(record.blob)
-    setStatus('')
-  }
-
-  async function removeLocal(name) {
-    await idbDelete(name)
-    if (localName === name) {
-      if (localUrl) URL.revokeObjectURL(localUrl)
-      setLocalUrl('')
-      setLocalName('')
-    }
-    await refreshLocal()
-    setStatus(`Removed ${name} from this device.`)
-  }
-
-  async function removePublished(name) {
-    if (!uploadKey) {
-      setStatus('Add your upload key to delete a published model.')
-      return
-    }
-    setBusy(true)
-    try {
-      const res = await fetch(`/api/models/${encodeURIComponent(name)}`, {
-        method: 'DELETE',
-        headers: { 'x-upload-key': uploadKey },
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Delete failed.')
-      if (selected === `site:${name}`) setSelected('')
-      await loadPublished()
-      setStatus(`Removed ${name} from the site.`)
-    } catch (error) {
-      setStatus(error.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <article className="models">
       <p className="eyebrow">3D</p>
       <h1>Models</h1>
       <p className="lede">
-        Drop a <code>.glb</code>, <code>.gltf</code>, <code>.3mf</code>, or{' '}
-        <code>.blend</code> file. glTF and 3MF orbit in the viewer. Blender
-        files are stored here and download to open in Blender.
+        Click a tile to open it in the viewer, then download. Drop a{' '}
+        <code>.glb</code>, <code>.gltf</code>, <code>.3mf</code>, or{' '}
+        <code>.blend</code> to add one. Blender files download to open in Blender.
       </p>
+
+      <h2>Gallery</h2>
+      <Mosaic items={gallery} activeId={activeId} onOpen={openItem} />
+
+      <div className="viewer-bar">
+        <p>{activeName || 'Pick a tile'}</p>
+        {viewerSrc ? (
+          <a className="btn" href={viewerSrc} download={activeName}>
+            Download
+          </a>
+        ) : null}
+      </div>
+      <div className="viewer-wrap">
+        {viewerSrc && ['glb', 'gltf'].includes(activeExt) ? (
+          <model-viewer
+            src={viewerSrc}
+            alt={activeName || '3D model'}
+            camera-controls
+            auto-rotate
+            shadow-intensity="1"
+            touch-action="pan-y"
+          />
+        ) : viewerSrc && activeExt === '3mf' ? (
+          <ThreeMfViewer src={viewerSrc} />
+        ) : viewerSrc && activeExt === 'blend' ? (
+          <div className="viewer-empty viewer-file">
+            <p>{activeName}</p>
+            <p>Blender files cannot preview in the browser.</p>
+          </div>
+        ) : (
+          <p className="viewer-empty">No model selected yet.</p>
+        )}
+      </div>
 
       <div
         className={`dropzone ${dragging ? 'dropzone-active' : ''}`}
@@ -256,31 +298,6 @@ export default function Models() {
         </label>
       </div>
 
-      <div className="viewer-wrap">
-        {viewerSrc && ['glb', 'gltf'].includes(extOf(localName || selected.replace(/^site:/, ''))) ? (
-          <model-viewer
-            src={viewerSrc}
-            alt={localName || selected || '3D model'}
-            camera-controls
-            auto-rotate
-            shadow-intensity="1"
-            touch-action="pan-y"
-          />
-        ) : viewerSrc && extOf(localName || selected.replace(/^site:/, '')) === '3mf' ? (
-          <ThreeMfViewer src={viewerSrc} />
-        ) : viewerSrc && extOf(localName || selected.replace(/^site:/, '')) === 'blend' ? (
-          <div className="viewer-empty viewer-file">
-            <p>{localName || selected.replace(/^site:/, '')}</p>
-            <p>Blender files cannot preview in the browser.</p>
-            <a className="btn" href={viewerSrc} download={localName || selected.replace(/^site:/, '')}>
-              Download
-            </a>
-          </div>
-        ) : (
-          <p className="viewer-empty">No model selected yet.</p>
-        )}
-      </div>
-
       <label className="key-field">
         Upload key
         <input
@@ -292,66 +309,6 @@ export default function Models() {
         />
       </label>
       {status ? <p className="model-status">{status}</p> : null}
-
-      <h2>On this device</h2>
-      {localModels.length === 0 ? (
-        <p className="hint">Nothing saved in this browser yet.</p>
-      ) : (
-        <ul className="model-list">
-          {localModels.map((model) => (
-            <li key={model.name}>
-              <button type="button" onClick={() => openLocal(model)}>
-                {model.name}
-                <span>{prettySize(model.size)}</span>
-              </button>
-              <button
-                type="button"
-                className="linkish"
-                onClick={() => removeLocal(model.name)}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h2>On the site</h2>
-      {published.length === 0 ? (
-        <p className="hint">
-          No public models yet. Enable R2 in the Cloudflare dashboard, then
-          upload with the key so visitors can see them too.
-        </p>
-      ) : (
-        <ul className="model-list">
-          {published.map((model) => (
-            <li key={model.name}>
-              <button
-                type="button"
-                className={selected === `site:${model.name}` && !localUrl ? 'active' : ''}
-                onClick={() => {
-                  if (localUrl) URL.revokeObjectURL(localUrl)
-                  setLocalUrl('')
-                  setLocalName('')
-                  setSelected(`site:${model.name}`)
-                  setStatus('')
-                }}
-              >
-                {model.name}
-                <span>{prettySize(model.size)}</span>
-              </button>
-              <button
-                type="button"
-                className="linkish"
-                disabled={busy}
-                onClick={() => removePublished(model.name)}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </article>
   )
 }
