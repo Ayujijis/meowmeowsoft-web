@@ -9,10 +9,11 @@ export default function ThreeMfViewer({ src }) {
   useEffect(() => {
     const host = hostRef.current
     if (!host || !src) return undefined
+    host.dataset.ready = '0'
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x111111)
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 5000)
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100000)
     camera.position.set(2, 2, 2)
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -20,10 +21,13 @@ export default function ThreeMfViewer({ src }) {
 
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-    const key = new THREE.DirectionalLight(0xffffff, 1.1)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.85))
+    const key = new THREE.DirectionalLight(0xffffff, 1.15)
     key.position.set(4, 8, 6)
     scene.add(key)
+    const fill = new THREE.DirectionalLight(0xffffff, 0.35)
+    fill.position.set(-6, 2, -4)
+    scene.add(fill)
 
     const loader = new ThreeMFLoader()
     let frame = 0
@@ -34,17 +38,33 @@ export default function ThreeMfViewer({ src }) {
       if (!clientWidth || !clientHeight) return
       camera.aspect = clientWidth / clientHeight
       camera.updateProjectionMatrix()
-      renderer.setSize(clientWidth, clientHeight, false)
+      renderer.setSize(clientWidth, clientHeight, true)
     }
 
-    function fit(object) {
-      const box = new THREE.Box3().setFromObject(object)
-      const size = box.getSize(new THREE.Vector3()).length() || 1
+    function fit(root) {
+      root.updateMatrixWorld(true)
+      const box = new THREE.Box3()
+      let meshCount = 0
+      root.traverse((child) => {
+        if (!child.isMesh || !child.geometry) return
+        meshCount += 1
+        if (!child.geometry.boundingBox) child.geometry.computeBoundingBox()
+        const childBox = child.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld)
+        if (meshCount === 1) box.copy(childBox)
+        else box.union(childBox)
+      })
+      if (!meshCount || box.isEmpty()) return
       const center = box.getCenter(new THREE.Vector3())
-      controls.target.copy(center)
-      camera.near = size / 100
-      camera.far = size * 20
-      camera.position.copy(center).add(new THREE.Vector3(size * 0.55, size * 0.45, size * 0.55))
+      root.position.sub(center)
+      root.updateMatrixWorld(true)
+      const size = box.getSize(new THREE.Vector3())
+      const radius = Math.max(size.x, size.y, size.z, 0.001) * 0.5
+      const dist = (radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.2
+      controls.target.set(0, 0, 0)
+      camera.near = Math.max(dist / 200, 0.01)
+      camera.far = Math.max(dist * 40, 100)
+      camera.position.set(dist * 0.72, dist * 0.48, dist * 0.72)
+      camera.lookAt(0, 0, 0)
       camera.updateProjectionMatrix()
       controls.update()
     }
@@ -66,7 +86,10 @@ export default function ThreeMfViewer({ src }) {
       (object) => {
         if (disposed) return
         scene.add(object)
+        resize()
         fit(object)
+        renderer.render(scene, camera)
+        host.dataset.ready = '1'
       },
       undefined,
       () => {

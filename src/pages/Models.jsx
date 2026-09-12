@@ -254,6 +254,7 @@ export default function Models() {
             alt={activeName || '3D model'}
             camera-controls
             auto-rotate
+            interaction-prompt="none"
             shadow-intensity="1"
             touch-action="pan-y"
           />

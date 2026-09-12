@@ -384,6 +384,12 @@ a.card:hover {
   --progress-bar-color: var(--accent);
 }
 
+.viewer-wrap .three-host canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .viewer-file {
   gap: 0.6rem;
   padding: 1rem;
