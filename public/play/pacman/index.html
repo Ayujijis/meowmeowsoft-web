@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pac-Man</title>
+  <link rel="stylesheet" href="style.css?v=opt1">
+</head>
+<body>
+  <div id="game-root" class="game-container">
+    <header class="hud">
+      <div class="hud-item">
+        <span class="label">SCORE</span>
+        <span id="score">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="label">HIGH</span>
+        <span id="high-score">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="label">LIVES</span>
+        <span id="lives"></span>
+      </div>
+      <div class="hud-item">
+        <span class="label">LEVEL</span>
+        <span id="level">1</span>
+      </div>
+    </header>
+
+    <div class="stage">
+      <canvas id="game-canvas" width="560" height="580"></canvas>
+
+      <div id="main-menu" class="menu-screen">
+        <h1 class="menu-title">PAC-MAN</h1>
+        <nav class="menu-nav" aria-label="Main menu">
+          <button type="button" class="menu-btn" id="btn-play" data-action="play">PLAY</button>
+          <button type="button" class="menu-btn" id="btn-options" data-action="options">OPTIONS</button>
+          <button type="button" class="menu-btn" id="btn-customize" data-action="customize">CUSTOMIZE COLOR</button>
+          <button type="button" class="menu-btn" id="btn-exit" data-action="exit">EXIT</button>
+        </nav>
+        <p class="controls-hint">↑↓ and Enter, or click</p>
+      </div>
+
+      <div id="options-menu" class="menu-screen hidden">
+        <h1 class="menu-title menu-title-small">OPTIONS</h1>
+
+        <div class="options-block">
+          <p class="options-label">PAC-MAN SPRITE</p>
+          <div class="sprite-picks" id="player-sprites">
+            <button type="button" class="sprite-btn" data-kind="player" data-sprite="classic">
+              <canvas width="56" height="56"></canvas>
+              <span>Classic</span>
+            </button>
+            <button type="button" class="sprite-btn" data-kind="player" data-sprite="dinosaur">
+              <canvas width="56" height="56"></canvas>
+              <span>Dinosaur</span>
+            </button>
+            <button type="button" class="sprite-btn" data-kind="player" data-sprite="chicken">
+              <canvas width="56" height="56"></canvas>
+              <span>Chicken</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="options-block">
+          <p class="options-label">GHOST SPRITE</p>
+          <div class="sprite-picks" id="ghost-sprites">
+            <button type="button" class="sprite-btn" data-kind="ghost" data-sprite="classic">
+              <canvas width="56" height="56"></canvas>
+              <span>Classic</span>
+            </button>
+            <button type="button" class="sprite-btn" data-kind="ghost" data-sprite="dinosaur">
+              <canvas width="56" height="56"></canvas>
+              <span>Dinosaur</span>
+            </button>
+            <button type="button" class="sprite-btn" data-kind="ghost" data-sprite="chicken">
+              <canvas width="56" height="56"></canvas>
+              <span>Chicken</span>
+            </button>
+          </div>
+        </div>
+
+        <label class="options-slider">
+          <span>PAC-MAN SPEED <strong id="player-speed-value">2.00</strong></span>
+          <input id="player-speed" type="range" min="1" max="4" step="0.25" value="2">
+        </label>
+        <label class="options-slider">
+          <span>GHOST SPEED <strong id="ghost-speed-value">1.75</strong></span>
+          <input id="ghost-speed" type="range" min="0.5" max="3.5" step="0.25" value="1.75">
+        </label>
+
+        <button type="button" class="menu-btn" id="btn-options-back">BACK</button>
+      </div>
+
+      <div id="color-menu" class="menu-screen hidden">
+        <h1 class="menu-title menu-title-small">PAC-MAN COLOR</h1>
+        <div class="color-layout">
+          <div class="wheel-wrap">
+            <canvas id="color-wheel" width="220" height="220" aria-label="Color wheel"></canvas>
+            <label class="value-label">
+              Brightness
+              <input id="color-value" type="range" min="0" max="100" value="100">
+            </label>
+          </div>
+          <div class="color-side">
+            <canvas id="color-preview" width="96" height="96" aria-hidden="true"></canvas>
+            <label class="hex-label">
+              Hex
+              <input id="color-hex" type="text" maxlength="7" spellcheck="false" autocomplete="off">
+            </label>
+            <p id="hex-error" class="hex-error hidden">Use a hex color like #FFDD00</p>
+          </div>
+        </div>
+        <button type="button" class="menu-btn" id="btn-color-back">BACK</button>
+      </div>
+
+      <div id="overlay" class="overlay hidden">
+        <div class="overlay-content">
+          <h1 id="overlay-title">PAC-MAN</h1>
+          <p id="overlay-message"></p>
+          <div id="overlay-actions" class="overlay-actions hidden">
+            <button type="button" class="menu-btn" id="btn-play-again">PLAY AGAIN</button>
+            <button type="button" class="menu-btn" id="btn-overlay-menu">MENU</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="exit-screen" class="exit-screen hidden">
+    <p>Thanks for playing</p>
+  </div>
+
+  <script type="module" src="js/main.js?v=opt1"></script>
+</body>
+</html>
