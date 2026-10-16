@@ -98,7 +98,9 @@ h3 {
 
 .nav {
   display: flex;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem 1.25rem;
 }
 
 .nav a {
@@ -564,6 +566,76 @@ a.card:hover {
   margin: 0;
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.dbmaker-lab {
+  max-width: 52rem;
+}
+
+.lab-login {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.lab-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.btn-ghost:hover {
+  color: var(--accent);
+  background: transparent;
+  border-color: var(--accent);
+}
+
+.dbmaker-lab-frame {
+  width: 100%;
+  height: min(72vh, 640px);
+  border: 1px solid var(--line);
+  background: #111111;
+}
+
+.lab-empty {
+  min-height: 12rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.board h1 {
+  font-size: clamp(1.85rem, 5vw, 2.85rem);
+  margin: 0 0 0.85rem;
+}
+
+.phrase-table-wrap {
+  overflow-x: auto;
+  margin-top: 1.5rem;
+}
+
+.phrase-table {
+  width: max(100%, max-content);
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.phrase-table td {
+  border: 1px solid var(--line);
+  padding: 0.65rem 0.7rem;
+  background: var(--paper);
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {

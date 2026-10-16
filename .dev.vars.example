@@ -1,0 +1,3 @@
+# Copy to .dev.vars for local `wrangler pages dev` (never commit .dev.vars).
+DBMAKER_LAB_KEY=choose-a-strong-preview-password
+UPLOAD_KEY=optional-models-upload-key

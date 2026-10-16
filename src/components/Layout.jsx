@@ -12,7 +12,9 @@ export default function Layout() {
             Work
           </NavLink>
           <NavLink to="/models">3D</NavLink>
+          <NavLink to="/dbmaker-lab">DBmaker lab</NavLink>
           <NavLink to="/about">About</NavLink>
+          <NavLink to="/board">Board</NavLink>
         </nav>
       </header>
       <main className="site-main">

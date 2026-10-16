@@ -15,6 +15,10 @@ dist-ssr
 .dev.vars.models-key
 .wrangler
 
+# Private DBmaker branch builds (use R2 via /dbmaker-lab only)
+public/dbmaker-lab/
+dbmaker-lab-local/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
